@@ -1,0 +1,42 @@
+{% include 'layout/header_dashboard.html' %}
+
+<body class="bg-body-primary">
+    {% include 'layout/nav.html' %}
+    
+    <div class="container-fluid bg-body-secondary">
+       
+        <div class="card">
+            <!-- Tabla de datos -->
+            {% include 'layout/modalAgregar.html' %}
+            {% include 'layout/modalEditar.html' %}
+            <details class="mb-4">
+                <summary class="h5 text-primary"><i class="fas fa-table me-2"></i>Ver tabla de datos</summary>
+                <div class="mt-3 table-responsive">
+                    <table id="tablaCancer" class="table table-striped" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>Pais</th>
+                                <th>Típo de cancer</th>
+                                <th>Sexo</th>
+                                <th>Año</th>
+                                <th>Casos</th>
+                                <th>Muertes</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </details>
+        </div>
+        {% include 'layout/scripts.html' %}
+        <script src="{{ url_for('static', filename='js/crudgames.js') }}?v=3.0.0"></script>
+
+    </div>
+
+{% include 'layout/mensajes.html' %}
+
+
+</body>
+{% include 'layout/footer_dashboard.html' %}
+
+</html>

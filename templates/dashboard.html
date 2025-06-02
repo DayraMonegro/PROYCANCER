@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Interactivo - Cáncer Global</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+  <style>
+    :root {
+      --bg-color: #a1d2cc;
+      --text-color: #1c020a;
+      --card-bg: #ffffff;
+      --card-shadow: rgba(0, 0, 0, 0.1);
+      --chart-bg: #ffffff;
+      --btn-primary-bg: #007bff;
+      --btn-primary-text: #ffffff;
+    }
+
+    [data-theme="dark"] {
+      --bg-color: #1c2526;
+      --text-color: #e0e0e0;
+      --card-bg: #2c3e50;
+      --card-shadow: rgba(0, 0, 0, 0.3);
+      --chart-bg: #34495e;
+      --btn-primary-bg: #4a90e2;
+      --btn-primary-text: #ffffff;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: var(--text-color);
+      transition: all 0.3s ease;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .theme-toggle, .logout-btn {
+      cursor: pointer;
+      font-size: 1.5rem;
+      color: var(--text-color);
+      margin-left: 15px;
+    }
+
+    .toast-container {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 1050;
+    }
+
+    .table-container {
+      background-color: var(--card-bg);
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 4px 8px var(--card-shadow);
+    }
+
+    .chart-container {
+      background-color: var(--chart-bg);
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 4px 8px var(--card-shadow);
+      margin-bottom: 20px;
+    }
+
+    .section-title, .chart-title {
+      color: var(--text-color);
+    }
+
+    .table thead th {
+      background-color: var(--card-bg);
+      color: var(--text-color);
+    }
+
+    .table tbody tr {
+      background-color: var(--card-bg);
+      color: var(--text-color);
+    }
+
+    .modal-content {
+      background-color: var(--card-bg);
+      color: var(--text-color);
+    }
+
+    .form-control, .form-select {
+      background-color: var(--card-bg);
+      color: var(--text-color);
+      border: 1px solid var(--text-color);
+    }
+
+    .form-control:focus, .form-select:focus {
+      background-color: var(--card-bg);
+      color: var(--text-color);
+      border-color: var(--text-color);
+      box-shadow: 0 0 5px var(--text-color);
+    }
+
+    .btn-primary {
+      background-color: var(--btn-primary-bg);
+      color: var(--btn-primary-text);
+      border: none;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--btn-primary-bg);
+      opacity: 0.9;
+    }
+
+    .crud-btn {
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body data-theme="light">
+  <div class="container py-5">
+    <!-- Header with Theme Toggle and Logout Button -->
+    <div class="header">
+      <h1>Datos Globales de Cáncer</h1>
+      <div>
+        <i class="fas fa-moon theme-toggle" id="themeToggle" title="Cambiar a modo oscuro"></i>
+        <a href="{{ url_for('logout') }}" class="fas fa-sign-out-alt logout-btn" id="logoutBtn" title="Cerrar Sesión"></a>
+      </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast-container">
+      <div id="toastNotificacion" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+          <strong class="me-auto">Notificación</strong>
+          <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body" id="toastMensaje"></div>
+      </div>
+    </div>
+
+    <!-- Navegación por pestañas -->
+    <ul class="nav nav-tabs" id="myTab" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="table-tab" data-bs-toggle="tab" data-bs-target="#table-tab-pane" type="button" role="tab" aria-controls="table-tab-pane" aria-selected="true">
+          🧾 Tabla de Datos
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="charts-tab" data-bs-toggle="tab" data-bs-target="#charts-tab-pane" type="button" role="tab" aria-controls="charts-tab-pane" aria-selected="false">
+          📊 Visualizaciones
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content" id="myTabContent">
+      <!-- Pestaña de Tabla -->
+      <div class="tab-pane fade show active" id="table-tab-pane" role="tabpanel" aria-labelledby="table-tab" tabindex="0">
+        <div class="mb-4">
+          <h2 class="section-title">📄 Registro de Datos</h2>
+          <button class="btn btn-primary mb-2 crud-btn" data-bs-toggle="modal" data-bs-target="#modalCRUD">Gestionar Registros</button>
+          <button class="btn btn-primary mb-2" data-bs-toggle="modal" data-bs-target="#modalAgregar">Agregar Registro</button>
+          <div class="table-container">
+            <table id="tabla-cancer" class="table table-striped table-hover">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>🌍 País</th>
+                  <th>🧬 Cáncer</th>
+                  <th>👫 Género</th>
+                  <th>📅 Año</th>
+                  <th>📈 Edad</th>
+                  <th>Riesgo Genético</th>
+                  <th>Contaminación</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- Los datos se cargarán aquí -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Pestaña de Gráficos -->
+      <div class="tab-pane fade" id="charts-tab-pane" role="tabpanel" aria-labelledby="charts-tab" tabindex="0">
+        <h2 class="section-title">📈 Visualización de Datos</h2>
+        <div class="row g-4">
+          <div class="col-md-6">
+            <div class="chart-container">
+              <h3 class="chart-title">1. Severidad por Región (Top 15)</h3>
+              <canvas id="chart1"></canvas>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="chart-container">
+              <h3 class="chart-title">2. Distribución por Tipo de Cáncer</h3>
+              <canvas id="chart2"></canvas>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="chart-container">
+              <h3 class="chart-title">3. Severidad por Región</h3>
+              <canvas id="chart3"></canvas>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="chart-container">
+              <h3 class="chart-title">4. Proporción de Casos por Género</h3>
+              <canvas id="chart4"></canvas>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="chart-container">
+              <h3 class="chart-title">5. Tendencias Anuales</h3>
+              <canvas id="chart5"></canvas>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="chart-container">
+              <h3 class="chart-title">6. Top 10 Países con Mayor Severidad</h3>
+              <canvas id="chart6"></canvas>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="chart-container">
+              <h3 class="chart-title">7. Relación Severidad vs Costo de Tratamiento</h3>
+              <canvas id="chart7"></canvas>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="chart-container">
+              <h3 class="chart-title">8. Distribución por Región</h3>
+              <canvas id="chart8"></canvas>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="chart-container">
+              <h3 class="chart-title">9. Tipos de Cáncer por Género</h3>
+              <canvas id="chart9"></canvas>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="chart-container">
+              <h3 class="chart-title">10. Costo de Tratamiento por Tipo</h3>
+              <canvas id="chart10"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal CRUD -->
+  <div class="modal fade" id="modalCRUD" tabindex="-1" aria-labelledby="modalCRUD-label" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalCRUD-label">Gestionar Registros</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Selecciona una acción para gestionar los registros:</p>
+          <div class="d-flex flex-column gap-2">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAgregar" onclick="$('#modalCRUD').modal('hide')">Agregar Nuevo Registro</button>
+            <button class="btn btn-warning" onclick="alert('Selecciona un registro en la tabla para editar.'); $('#modalCRUD').modal('hide')">Editar Registro</button>
+            <button class="btn btn-danger" onclick="alert('Selecciona un registro en la tabla para eliminar.'); $('#modalCRUD').modal('hide')">Eliminar Registro</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Agregar -->
+  <div class="modal fade" id="modalAgregar" tabindex="-1" aria-labelledby="modalAgregar-label" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalAgregar-label">Agregar Registro de Cáncer</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="add-cancer-form">
+            <div class="mb-3">
+              <label for="add-patient-id" class="form-label">ID del Paciente</label>
+              <input type="text" class="form-control" id="add-patient-id" name="patient_id" required>
+            </div>
+            <div class="mb-3">
+              <label for="add-age" class="form-label">Edad</label>
+              <input type="number" min="0" max="120" class="form-control" id="add-age" name="age" required>
+            </div>
+            <div class="mb-3">
+              <label for="add-gender" class="form-label">Género</label>
+              <select class="form-control" id="add-gender" name="gender" required>
+                <option value="">-- Selecciona --</option>
+                <option value="Male">Masculino</option>
+                <option value="Female">Femenino</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="add-country-region" class="form-label">País/Región</label>
+              <select class="form-control" id="add-country-region" name="country_region" required></select>
+            </div>
+            <div class="mb-3">
+              <label for="add-year" class="form-label">Año</label>
+              <input type="number" min="1900" max="2100" class="form-control" id="add-year" name="year" required>
+            </div>
+            <div class="mb-3">
+              <label for="add-genetic-risk" class="form-label">Riesgo Genético</label>
+              <input type="number" step="0.01" min="0" max="1" class="form-control" id="add-genetic-risk" name="genetic_risk" required>
+            </div>
+            <div class="mb-3">
+              <label for="add-air-pollution" class="form-label">Contaminación del Aire</label>
+              <input type="number" step="0.01" min="0" max="1" class="form-control" id="add-air-pollution" name="air_pollution" required>
+            </div>
+            <div class="mb-3">
+              <label for="add-alcohol-use" class="form-label">Consumo de Alcohol</label>
+              <input type="number" step="0.01" min="0" max="1" class="form-control" id="add-alcohol-use" name="alcohol_use" required>
+            </div>
+            <div class="mb-3">
+              <label for="add-smoking" class="form-label">Tabaquismo</label>
+              <input type="number" step="0.01" min="0" max="1" class="form-control" id="add-smoking" name="smoking" required>
+            </div>
+            <div class="mb-3">
+              <label for="add-obesity-level" class="form-label">Nivel de Obesidad</label>
+              <input type="number" step="0.01" min="0" max="1" class="form-control" id="add-obesity-level" name="obesity_level" required>
+            </div>
+            <div class="mb-3">
+              <label for="add-cancer-type" class="form-label">Tipo de Cáncer</label>
+              <select class="form-control" id="add-cancer-type" name="cancer_type" required></select>
+            </div>
+            <div class="mb-3">
+              <label for="add-cancer-stage" class="form-label">Etapa del Cáncer</label>
+              <select class="form-control" id="add-cancer-stage" name="cancer_stage" required></select>
+            </div>
+            <div class="mb-3">
+              <label for="add-treatment-cost" class="form-label">Costo de Tratamiento (USD)</label>
+              <input type="number" step="0.01" min="0" class="form-control" id="add-treatment-cost" name="treatment_cost_usd" required>
+            </div>
+            <div class="mb-3">
+              <label for="add-survival-years" class="form-label">Años de Supervivencia</label>
+              <input type="number" step="0.1" min="0" class="form-control" id="add-survival-years" name="survival_years" required>
+            </div>
+            <div class="mb-3">
+              <label for="add-severity-score" class="form-label">Puntuación de Severidad</label>
+              <input type="number" step="0.01" min="0" max="100" class="form-control" id="add-severity-score" name="target_severity_score" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Guardar</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Editar -->
+  <div class="modal fade" id="modalEditar" tabindex="-1" aria-labelledby="modalEditar-label" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalEditar-label">Editar Registro de Cáncer</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="edit-cancer-form">
+            <input type="hidden" id="edit-id" name="id">
+            <div class="mb-3">
+              <label for="edit-patient-id" class="form-label">Paciente</label>
+              <input type="text" class="form-control" id="edit-patient-id" name="patient_id" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit-age" class="form-label">Edad</label>
+              <input type="number" min="0" max="120" class="form-control" id="edit-age" name="age" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit-gender" class="form-label">Género</label>
+              <select class="form-control" id="edit-gender" name="gender" required>
+                <option value="">-- Selecciona --</option>
+                <option value="Male">Masculino</option>
+                <option value="Female">Femenino</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="edit-country-region" class="form-label">País/Región</label>
+              <select class="form-control" id="edit-country-region" name="country_region" required></select>
+            </div>
+            <div class="mb-3">
+              <label for="edit-year" class="form-label">Año</label>
+              <input type="number" min="1900" max="2100" class="form-control" id="edit-year" name="year" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit-genetic-risk" class="form-label">Riesgo Genético</label>
+              <input type="number" step="0.01" min="0" max="1" class="form-control" id="edit-genetic-risk" name="genetic_risk" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit-air-pollution" class="form-label">Contaminación del Aire</label>
+              <input type="number" step="0.01" min="0" max="1" class="form-control" id="edit-air-pollution" name="air_pollution" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit-alcohol-use" class="form-label">Consumo de Alcohol</label>
+              <input type="number" step="0.01" min="0" max="1" class="form-control" id="edit-alcohol-use" name="alcohol_use" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit-smoking" class="form-label">Tabaquismo</label>
+              <input type="number" step="0.01" min="0" max="1" class="form-control" id="edit-smoking" name="smoking" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit-obesity-level" class="form-label">Nivel de Obesidad</label>
+              <input type="number" step="0.01" min="0" max="1" class="form-control" id="edit-obesity-level" name="obesity_level" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit-cancer-type" class="form-label">Tipo de Cáncer</label>
+              <select class="form-control" id="edit-cancer-type" name="cancer_type" required></select>
+            </div>
+            <div class="mb-3">
+              <label for="edit-cancer-stage" class="form-label">Etapa del Cáncer</label>
+              <select class="form-control" id="edit-cancer-stage" name="cancer_stage" required></select>
+            </div>
+            <div class="mb-3">
+              1.=" Costo de Tratamiento (USD)
+              <input type="number" step="0.01" min="0" class="form-control" id="edit-treatment-cost" name="treatment_cost_usd" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit-survival-years" class="form-label">Años de Supervivencia</label>
+              <input type="number" step="0.1" min="0" class="form-control" id="edit-survival-years" name="survival_years" required>
+            </div>
+            <div class="mb-3">
+              <label for="edit-severity-score" class="form-label">Puntuación de Severidad</label>
+              <input type="number" step="0.1" min="0" max="100" class="form-control" id="edit-severity-score" name="target_severity_score" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+  <script>
+    // Theme toggle
+    document.getElementById('themeToggle').addEventListener'click', function() {
+      const body = document.body; // body
+      const isDarkMode = body.getAttribute('data-theme') === 'dark';
+      body.setAttribute('data-theme', isDarkMode ? 'light' : 'dark');
+      this.classList.toggle('fa-moon');
+      this.classList.toggle('fa-sun');
+      this.setAttribute('title', isDarkMode ? 'Cambiar a modo oscuro' : 'Cambiar a modo claro');
+    });
+
+    // Logout confirmation
+    document.getElementById('logoutBtn').addEventListener('click', function(event) {
+      event.preventDefault();
+      if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
+        window.location.href = this.href;
+      }
+    });
+  </script>
+</body>
+</html>
